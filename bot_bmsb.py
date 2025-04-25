@@ -2,8 +2,9 @@ import ccxt
 import pandas as pd
 import time
 import datetime
-from dotenv import load_dotenv
+import csv
 import os
+from dotenv import load_dotenv
 from telegram import Bot
 from telegram.constants import ParseMode
 import asyncio
@@ -78,6 +79,26 @@ async def enviar_alerta(mensaje):
     except Exception as e:
         print(f"❌ Error al enviar alerta de Telegram: {e}")
 
+# Función para registrar operación en CSV
+def registrar_operacion(fecha_hora, tipo_cierre, precio_compra, precio_venta, variacion_pct, ganancia_perdida):
+    archivo = 'registro_operaciones.csv'
+    archivo_existe = os.path.isfile(archivo)
+
+    with open(archivo, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        
+        if not archivo_existe:
+            writer.writerow(['FechaHora', 'TipoCierre', 'PrecioCompra', 'PrecioVenta', 'Variacion(%)', 'GananciaPerdida(USD)'])
+        
+        writer.writerow([
+            fecha_hora,
+            tipo_cierre,
+            f"{precio_compra:.2f}",
+            f"{precio_venta:.2f}",
+            f"{variacion_pct:.2f}",
+            f"{ganancia_perdida:.2f}"
+        ])
+
 def obtener_datos(simbolo, timeframe='15m', limite=100):
     velas = exchange.fetch_ohlcv(simbolo, timeframe=timeframe, limit=limite)
     df = pd.DataFrame(velas, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
@@ -132,6 +153,9 @@ def ejecutar_bot():
                 if precio_actual >= precio_tp:
                     ganancia = (precio_actual - precio_compra) * cantidad_operacion
                     porcentaje = ((precio_actual / precio_compra) - 1) * 100
+                    fecha_hora = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    registrar_operacion(fecha_hora, 'Take Profit', precio_compra, precio_actual, porcentaje, ganancia)
+
                     print(f"🎯 Take Profit alcanzado. Ganancia: +${ganancia:.2f}")
                     asyncio.run(enviar_alerta(
                         f"🎯 <b>Take Profit alcanzado</b>\n"
@@ -145,6 +169,9 @@ def ejecutar_bot():
                 elif precio_actual <= precio_sl:
                     perdida = (precio_actual - precio_compra) * cantidad_operacion
                     porcentaje = ((precio_actual / precio_compra) - 1) * 100
+                    fecha_hora = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    registrar_operacion(fecha_hora, 'Stop Loss', precio_compra, precio_actual, porcentaje, perdida)
+
                     print(f"🛡️ Stop Loss alcanzado. Pérdida: {perdida:.2f}")
                     asyncio.run(enviar_alerta(
                         f"🛡️ <b>Stop Loss alcanzado</b>\n"
