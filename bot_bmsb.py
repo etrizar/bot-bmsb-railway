@@ -17,6 +17,10 @@ CAPITAL_TOTAL = float(os.getenv("CAPITAL", 100))
 RIESGO_POR_OPERACION = float(os.getenv("RIESGO", 0.02))
 MARGEN_COMPRA = CAPITAL_TOTAL * RIESGO_POR_OPERACION
 
+TAKE_PROFIT_PORCENTAJE = float(os.getenv("TAKE_PROFIT", 0.02))
+STOP_LOSS_PORCENTAJE = float(os.getenv("STOP_LOSS", 0.01))
+
+
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 bot_telegram = Bot(token=TELEGRAM_TOKEN)
@@ -25,6 +29,8 @@ bot_telegram = Bot(token=TELEGRAM_TOKEN)
 print(f"🔹 Capital total: ${CAPITAL_TOTAL:.2f}")
 print(f"🔹 Monto a operar por operación: ${MARGEN_COMPRA:.2f}")
 print(f"🔹 Riesgo por operación: {RIESGO_POR_OPERACION * 100:.2f}%")
+print(f"🎯 Take Profit configurado: {TAKE_PROFIT_PORCENTAJE * 100:.2f}%")
+print(f"🛡️ Stop Loss configurado: {STOP_LOSS_PORCENTAJE * 100:.2f}%")
 
 # 🔵 Enviar alerta inicial
 async def alerta_inicio():
@@ -36,7 +42,8 @@ async def alerta_inicio():
                 f"🚀 Bot iniciado correctamente\n"
                 f"🔹 Capital total: ${CAPITAL_TOTAL:.2f}\n"
                 f"🔹 Monto a operar: ${MARGEN_COMPRA:.2f}\n"
-                f"🔹 Riesgo: {RIESGO_POR_OPERACION * 100:.2f}%"
+                f"🔹 Riesgo: {RIESGO_POR_OPERACION * 100:.2f}%\n"
+                f"🎯 TP: {TAKE_PROFIT_PORCENTAJE * 100:.2f}% | 🛡️ SL: {STOP_LOSS_PORCENTAJE * 100:.2f}%"
             ),
             parse_mode=ParseMode.HTML
         )
