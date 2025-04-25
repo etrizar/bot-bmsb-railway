@@ -21,10 +21,29 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 bot_telegram = Bot(token=TELEGRAM_TOKEN)
 
-# 🔵 Mostrar configuración inicial
+# 🔵 Mostrar configuración inicial en consola
 print(f"🔹 Capital total: ${CAPITAL_TOTAL:.2f}")
 print(f"🔹 Monto a operar por operación: ${MARGEN_COMPRA:.2f}")
 print(f"🔹 Riesgo por operación: {RIESGO_POR_OPERACION * 100:.2f}%")
+
+# 🔵 Enviar alerta inicial a Telegram
+async def alerta_inicio():
+    try:
+        bot = Bot(token=TELEGRAM_TOKEN)
+        await bot.send_message(
+            chat_id=TELEGRAM_CHAT_ID,
+            text=(
+                f"🚀 Bot iniciado correctamente\n"
+                f"🔹 Capital total: ${CAPITAL_TOTAL:.2f}\n"
+                f"🔹 Monto a operar por operación: ${MARGEN_COMPRA:.2f}\n"
+                f"🔹 Riesgo por operación: {RIESGO_POR_OPERACION * 100:.2f}%"
+            ),
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        print(f"❌ Error al enviar alerta de inicio: {e}")
+
+asyncio.run(alerta_inicio())
 
 # Configurar Binance real
 exchange = ccxt.binance({
@@ -39,14 +58,13 @@ exchange = ccxt.binance({
 
 SIMBOLO = 'BTC/USDT'
 
-# Función para enviar alertas a Telegram
+# Función general para enviar alertas a Telegram
 async def enviar_alerta(mensaje):
     try:
         bot = Bot(token=TELEGRAM_TOKEN)
         await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=mensaje, parse_mode=ParseMode.HTML)
     except Exception as e:
         print(f"❌ Error al enviar alerta de Telegram: {e}")
-
 
 def obtener_datos(simbolo, timeframe='15m', limite=100):
     velas = exchange.fetch_ohlcv(simbolo, timeframe=timeframe, limit=limite)
@@ -94,13 +112,11 @@ def ejecutar_bot():
             if ultima['buy']:
                 print("📈 Señal de COMPRA detectada")
                 asyncio.run(enviar_alerta(f"📈 Señal de COMPRA detectada en {SIMBOLO}"))
-
                 ejecutar_orden('buy', SIMBOLO, MARGEN_COMPRA)
 
             elif ultima['sell']:
                 print("📉 Señal de VENTA detectada")
                 asyncio.run(enviar_alerta(f"📉 Señal de VENTA detectada en {SIMBOLO}"))
-
                 ejecutar_orden('sell', SIMBOLO, MARGEN_COMPRA)
 
             else:
@@ -109,7 +125,6 @@ def ejecutar_bot():
         except Exception as e:
             print(f"❌ Error general: {e}")
             asyncio.run(enviar_alerta(f"❌ Error general en bot: {e}"))
-
 
         time.sleep(900)  # Esperar 15 minutos antes de volver a analizar
 
