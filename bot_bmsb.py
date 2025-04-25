@@ -45,7 +45,7 @@ async def enviar_alerta(mensaje):
 
 def obtener_datos(simbolo, timeframe='15m', limite=100):
     velas = exchange.fetch_ohlcv(simbolo, timeframe=timeframe, limit=limite)
-    df = pd.DataFrame(velas, columns=['timestamp', 'open', 'high', 'low', 'close', 'close', 'volume'])
+    df = pd.DataFrame(velas, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     return df
 
@@ -88,12 +88,14 @@ def ejecutar_bot():
 
             if ultima['buy']:
                 print("📈 Señal de COMPRA detectada")
-                enviar_alerta(f"📈 Señal de COMPRA detectada en {SIMBOLO}")
+                asyncio.run(enviar_alerta(f"📈 Señal de COMPRA detectada en {SIMBOLO}"))
+
                 ejecutar_orden('buy', SIMBOLO, MARGEN_COMPRA)
 
             elif ultima['sell']:
                 print("📉 Señal de VENTA detectada")
-                enviar_alerta(f"📉 Señal de VENTA detectada en {SIMBOLO}")
+                asyncio.run(enviar_alerta(f"📉 Señal de VENTA detectada en {SIMBOLO}"))
+
                 ejecutar_orden('sell', SIMBOLO, MARGEN_COMPRA)
 
             else:
@@ -101,7 +103,8 @@ def ejecutar_bot():
 
         except Exception as e:
             print(f"❌ Error general: {e}")
-            enviar_alerta(f"❌ Error general en bot: {e}")
+            asyncio.run(enviar_alerta(f"❌ Error general en bot: {e}"))
+
 
         time.sleep(900)  # Esperar 15 minutos antes de volver a analizar
 
