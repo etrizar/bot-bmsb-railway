@@ -15,11 +15,9 @@ API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
 CAPITAL_TOTAL = float(os.getenv("CAPITAL", 100))
 RIESGO_POR_OPERACION = float(os.getenv("RIESGO", 0.02))
-MARGEN_COMPRA = CAPITAL_TOTAL * RIESGO_POR_OPERACION
-
 TAKE_PROFIT_PORCENTAJE = float(os.getenv("TAKE_PROFIT", 0.02))
 STOP_LOSS_PORCENTAJE = float(os.getenv("STOP_LOSS", 0.01))
-
+MARGEN_COMPRA = CAPITAL_TOTAL * RIESGO_POR_OPERACION
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -64,10 +62,6 @@ exchange = ccxt.binance({
 })
 
 SIMBOLO = 'BTC/USDT'
-
-# Configuración de TP y SL
-TAKE_PROFIT_PORCENTAJE = 0.02  # 2% de ganancia
-STOP_LOSS_PORCENTAJE = 0.01    # 1% de pérdida
 
 # Variables de operación
 precio_compra = None
@@ -136,14 +130,28 @@ def ejecutar_bot():
 
             if operacion_abierta:
                 if precio_actual >= precio_tp:
-                    print("🎯 Take Profit alcanzado")
-                    asyncio.run(enviar_alerta(f"🎯 Take Profit alcanzado en {SIMBOLO}. Cerrando operación."))
+                    ganancia = (precio_actual - precio_compra) * cantidad_operacion
+                    porcentaje = ((precio_actual / precio_compra) - 1) * 100
+                    print(f"🎯 Take Profit alcanzado. Ganancia: +${ganancia:.2f}")
+                    asyncio.run(enviar_alerta(
+                        f"🎯 <b>Take Profit alcanzado</b>\n"
+                        f"Ganancia: +${ganancia:.2f} ({porcentaje:.2f}%)\n"
+                        f"Precio de compra: {precio_compra:.2f}\n"
+                        f"Precio de venta: {precio_actual:.2f}"
+                    ))
                     ejecutar_orden('sell', SIMBOLO, cantidad_operacion * precio_actual)
                     operacion_abierta = False
 
                 elif precio_actual <= precio_sl:
-                    print("🛡️ Stop Loss alcanzado")
-                    asyncio.run(enviar_alerta(f"🛡️ Stop Loss alcanzado en {SIMBOLO}. Cerrando operación."))
+                    perdida = (precio_actual - precio_compra) * cantidad_operacion
+                    porcentaje = ((precio_actual / precio_compra) - 1) * 100
+                    print(f"🛡️ Stop Loss alcanzado. Pérdida: {perdida:.2f}")
+                    asyncio.run(enviar_alerta(
+                        f"🛡️ <b>Stop Loss alcanzado</b>\n"
+                        f"Pérdida: {perdida:.2f} ({porcentaje:.2f}%)\n"
+                        f"Precio de compra: {precio_compra:.2f}\n"
+                        f"Precio de venta: {precio_actual:.2f}"
+                    ))
                     ejecutar_orden('sell', SIMBOLO, cantidad_operacion * precio_actual)
                     operacion_abierta = False
 
