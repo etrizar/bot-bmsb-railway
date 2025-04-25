@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 
 # Cargar variables desde .env
+
 load_dotenv()  # ← Esto es obligatorio
 
 API_KEY = os.getenv("API_KEY")
