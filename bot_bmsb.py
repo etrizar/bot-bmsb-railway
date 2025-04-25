@@ -4,10 +4,10 @@ import time
 import datetime
 from dotenv import load_dotenv
 import os
+from telegram import Bot
 
 # Cargar variables desde .env
-
-load_dotenv()  # ← Esto es obligatorio
+load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
@@ -15,8 +15,11 @@ CAPITAL_TOTAL = float(os.getenv("CAPITAL", 100))
 RIESGO_POR_OPERACION = float(os.getenv("RIESGO", 0.02))
 MARGEN_COMPRA = CAPITAL_TOTAL * RIESGO_POR_OPERACION
 
-# Configurar Binance Testnet
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+bot_telegram = Bot(token=TELEGRAM_TOKEN)
 
+# Configurar Binance real
 exchange = ccxt.binance({
     'apiKey': API_KEY,
     'secret': API_SECRET,
@@ -27,14 +30,18 @@ exchange = ccxt.binance({
     }
 })
 
-
-# exchange.set_sandbox_mode(True)
-
 SIMBOLO = 'BTC/USDT'
+
+# Función para enviar alertas a Telegram
+def enviar_alerta(mensaje):
+    try:
+        bot_telegram.send_message(chat_id=TELEGRAM_CHAT_ID, text=mensaje)
+    except Exception as e:
+        print(f"❌ Error al enviar alerta de Telegram: {e}")
 
 def obtener_datos(simbolo, timeframe='15m', limite=100):
     velas = exchange.fetch_ohlcv(simbolo, timeframe=timeframe, limit=limite)
-    df = pd.DataFrame(velas, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+    df = pd.DataFrame(velas, columns=['timestamp', 'open', 'high', 'low', 'close', 'close', 'volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     return df
 
@@ -59,9 +66,13 @@ def ejecutar_orden(tipo, simbolo, monto_usd):
             orden = exchange.create_market_buy_order(simbolo, cantidad)
         elif tipo == 'sell':
             orden = exchange.create_market_sell_order(simbolo, cantidad)
+
         print(f"[{datetime.datetime.now()}] ✅ Orden {tipo.upper()} ejecutada: {orden}")
+        enviar_alerta(f"✅ ORDEN {tipo.upper()} ejecutada en {simbolo} por aproximadamente ${monto_usd:.2f}")
+
     except Exception as e:
         print(f"❌ Error al ejecutar orden: {e}")
+        enviar_alerta(f"❌ Error al ejecutar orden {tipo.upper()} en {simbolo}: {e}")
 
 def ejecutar_bot():
     while True:
@@ -73,17 +84,23 @@ def ejecutar_bot():
 
             if ultima['buy']:
                 print("📈 Señal de COMPRA detectada")
+                enviar_alerta(f"📈 Señal de COMPRA detectada en {SIMBOLO}")
                 ejecutar_orden('buy', SIMBOLO, MARGEN_COMPRA)
+
             elif ultima['sell']:
                 print("📉 Señal de VENTA detectada")
+                enviar_alerta(f"📉 Señal de VENTA detectada en {SIMBOLO}")
                 ejecutar_orden('sell', SIMBOLO, MARGEN_COMPRA)
+
             else:
                 print(f"[{datetime.datetime.now()}] 🔄 Sin señales")
 
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"❌ Error general: {e}")
+            enviar_alerta(f"❌ Error general en bot: {e}")
 
-        time.sleep(900)  # Espera 15 minutos
+        time.sleep(900)  # Esperar 15 minutos antes de volver a analizar
 
 if __name__ == '__main__':
     ejecutar_bot()
+
