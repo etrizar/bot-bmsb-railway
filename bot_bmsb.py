@@ -15,13 +15,19 @@ RIESGO_POR_OPERACION = float(os.getenv("RIESGO", 0.02))
 MARGEN_COMPRA = CAPITAL_TOTAL * RIESGO_POR_OPERACION
 
 # Configurar Binance Testnet
+
 exchange = ccxt.binance({
     'apiKey': API_KEY,
     'secret': API_SECRET,
     'enableRateLimit': True,
-    'options': {'defaultType': 'spot'}
+    'options': {
+        'defaultType': 'spot',
+        'adjustForTimeDifference': True
+    }
 })
-exchange.set_sandbox_mode(True)
+
+
+# exchange.set_sandbox_mode(True)
 
 SIMBOLO = 'BTC/USDT'
 
