@@ -21,6 +21,11 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 bot_telegram = Bot(token=TELEGRAM_TOKEN)
 
+# 🔵 Mostrar configuración inicial
+print(f"🔹 Capital total: ${CAPITAL_TOTAL:.2f}")
+print(f"🔹 Monto a operar por operación: ${MARGEN_COMPRA:.2f}")
+print(f"🔹 Riesgo por operación: {RIESGO_POR_OPERACION * 100:.2f}%")
+
 # Configurar Binance real
 exchange = ccxt.binance({
     'apiKey': API_KEY,
