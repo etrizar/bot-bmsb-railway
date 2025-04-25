@@ -205,7 +205,7 @@ def ejecutar_bot():
             print(f"❌ Error general: {e}")
             asyncio.run(enviar_alerta(f"❌ Error general en bot: {e}"))
 
-        time.sleep(900)  # Esperar 15 minutos antes de volver a analizar
+        time.sleep(300)  # Esperar 15 minutos antes de volver a analizar
 
 if __name__ == '__main__':
     ejecutar_bot()
