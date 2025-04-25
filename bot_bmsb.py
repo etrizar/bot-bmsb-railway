@@ -5,6 +5,8 @@ import datetime
 from dotenv import load_dotenv
 import os
 from telegram import Bot
+from telegram.constants import ParseMode
+import asyncio
 
 # Cargar variables desde .env
 load_dotenv()
@@ -33,11 +35,13 @@ exchange = ccxt.binance({
 SIMBOLO = 'BTC/USDT'
 
 # Función para enviar alertas a Telegram
-def enviar_alerta(mensaje):
+async def enviar_alerta(mensaje):
     try:
-        bot_telegram.send_message(chat_id=TELEGRAM_CHAT_ID, text=mensaje)
+        bot = Bot(token=TELEGRAM_TOKEN)
+        await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=mensaje, parse_mode=ParseMode.HTML)
     except Exception as e:
         print(f"❌ Error al enviar alerta de Telegram: {e}")
+
 
 def obtener_datos(simbolo, timeframe='15m', limite=100):
     velas = exchange.fetch_ohlcv(simbolo, timeframe=timeframe, limit=limite)
@@ -68,11 +72,11 @@ def ejecutar_orden(tipo, simbolo, monto_usd):
             orden = exchange.create_market_sell_order(simbolo, cantidad)
 
         print(f"[{datetime.datetime.now()}] ✅ Orden {tipo.upper()} ejecutada: {orden}")
-        enviar_alerta(f"✅ ORDEN {tipo.upper()} ejecutada en {simbolo} por aproximadamente ${monto_usd:.2f}")
+        asyncio.run(enviar_alerta(f"✅ ORDEN {tipo.upper()} ejecutada en {simbolo} por aproximadamente ${monto_usd:.2f}"))
 
     except Exception as e:
         print(f"❌ Error al ejecutar orden: {e}")
-        enviar_alerta(f"❌ Error al ejecutar orden {tipo.upper()} en {simbolo}: {e}")
+        asyncio.run(enviar_alerta(f"❌ Error al ejecutar orden {tipo.upper()} en {simbolo}: {e}"))
 
 def ejecutar_bot():
     while True:
