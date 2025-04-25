@@ -21,12 +21,12 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 bot_telegram = Bot(token=TELEGRAM_TOKEN)
 
-# 🔵 Mostrar configuración inicial en consola
+# 🔵 Mostrar configuración inicial
 print(f"🔹 Capital total: ${CAPITAL_TOTAL:.2f}")
 print(f"🔹 Monto a operar por operación: ${MARGEN_COMPRA:.2f}")
 print(f"🔹 Riesgo por operación: {RIESGO_POR_OPERACION * 100:.2f}%")
 
-# 🔵 Enviar alerta inicial a Telegram
+# 🔵 Enviar alerta inicial
 async def alerta_inicio():
     try:
         bot = Bot(token=TELEGRAM_TOKEN)
@@ -35,8 +35,8 @@ async def alerta_inicio():
             text=(
                 f"🚀 Bot iniciado correctamente\n"
                 f"🔹 Capital total: ${CAPITAL_TOTAL:.2f}\n"
-                f"🔹 Monto a operar por operación: ${MARGEN_COMPRA:.2f}\n"
-                f"🔹 Riesgo por operación: {RIESGO_POR_OPERACION * 100:.2f}%"
+                f"🔹 Monto a operar: ${MARGEN_COMPRA:.2f}\n"
+                f"🔹 Riesgo: {RIESGO_POR_OPERACION * 100:.2f}%"
             ),
             parse_mode=ParseMode.HTML
         )
@@ -58,7 +58,18 @@ exchange = ccxt.binance({
 
 SIMBOLO = 'BTC/USDT'
 
-# Función general para enviar alertas a Telegram
+# Configuración de TP y SL
+TAKE_PROFIT_PORCENTAJE = 0.02  # 2% de ganancia
+STOP_LOSS_PORCENTAJE = 0.01    # 1% de pérdida
+
+# Variables de operación
+precio_compra = None
+precio_tp = None
+precio_sl = None
+cantidad_operacion = None
+operacion_abierta = False
+
+# Función para enviar alertas
 async def enviar_alerta(mensaje):
     try:
         bot = Bot(token=TELEGRAM_TOKEN)
@@ -97,30 +108,56 @@ def ejecutar_orden(tipo, simbolo, monto_usd):
         print(f"[{datetime.datetime.now()}] ✅ Orden {tipo.upper()} ejecutada: {orden}")
         asyncio.run(enviar_alerta(f"✅ ORDEN {tipo.upper()} ejecutada en {simbolo} por aproximadamente ${monto_usd:.2f}"))
 
+        return precio_actual, cantidad
+
     except Exception as e:
         print(f"❌ Error al ejecutar orden: {e}")
         asyncio.run(enviar_alerta(f"❌ Error al ejecutar orden {tipo.upper()} en {simbolo}: {e}"))
+        return None, None
 
 def ejecutar_bot():
+    global precio_compra, precio_tp, precio_sl, operacion_abierta, cantidad_operacion
+
     while True:
         try:
             df = obtener_datos(SIMBOLO)
             df = calcular_bms_band(df)
             df = generar_senales(df)
             ultima = df.iloc[-1]
+            ticker = exchange.fetch_ticker(SIMBOLO)
+            precio_actual = ticker['last']
 
-            if ultima['buy']:
-                print("📈 Señal de COMPRA detectada")
-                asyncio.run(enviar_alerta(f"📈 Señal de COMPRA detectada en {SIMBOLO}"))
-                ejecutar_orden('buy', SIMBOLO, MARGEN_COMPRA)
+            if operacion_abierta:
+                if precio_actual >= precio_tp:
+                    print("🎯 Take Profit alcanzado")
+                    asyncio.run(enviar_alerta(f"🎯 Take Profit alcanzado en {SIMBOLO}. Cerrando operación."))
+                    ejecutar_orden('sell', SIMBOLO, cantidad_operacion * precio_actual)
+                    operacion_abierta = False
 
-            elif ultima['sell']:
-                print("📉 Señal de VENTA detectada")
-                asyncio.run(enviar_alerta(f"📉 Señal de VENTA detectada en {SIMBOLO}"))
-                ejecutar_orden('sell', SIMBOLO, MARGEN_COMPRA)
+                elif precio_actual <= precio_sl:
+                    print("🛡️ Stop Loss alcanzado")
+                    asyncio.run(enviar_alerta(f"🛡️ Stop Loss alcanzado en {SIMBOLO}. Cerrando operación."))
+                    ejecutar_orden('sell', SIMBOLO, cantidad_operacion * precio_actual)
+                    operacion_abierta = False
+
+                else:
+                    print(f"[{datetime.datetime.now()}] 📈 Operación abierta - Monitoreando precio...")
 
             else:
-                print(f"[{datetime.datetime.now()}] 🔄 Sin señales")
+                if ultima['buy']:
+                    print("📈 Señal de COMPRA detectada")
+                    asyncio.run(enviar_alerta(f"📈 Señal de COMPRA detectada en {SIMBOLO}"))
+                    precio_compra, cantidad_operacion = ejecutar_orden('buy', SIMBOLO, MARGEN_COMPRA)
+                    if precio_compra:
+                        precio_tp = precio_compra * (1 + TAKE_PROFIT_PORCENTAJE)
+                        precio_sl = precio_compra * (1 - STOP_LOSS_PORCENTAJE)
+                        operacion_abierta = True
+
+                elif ultima['sell']:
+                    print("📉 Señal de VENTA detectada (no se opera en venta si no hay posición)")
+
+                else:
+                    print(f"[{datetime.datetime.now()}] 🔄 Sin señales")
 
         except Exception as e:
             print(f"❌ Error general: {e}")
@@ -130,4 +167,3 @@ def ejecutar_bot():
 
 if __name__ == '__main__':
     ejecutar_bot()
-
